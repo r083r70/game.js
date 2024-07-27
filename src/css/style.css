@@ -1,0 +1,14 @@
+path {
+    fill: #ccc;
+    stroke: #fff;
+    stroke-width: .5px;
+}
+
+path:hover {
+    fill: red;
+}
+
+svg {
+    border: #000;
+    border-style: solid;
+}
