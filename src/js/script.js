@@ -1,38 +1,48 @@
-import InfoPanel from "./infopanel.js" ;
+import { InfoCard, MapCard, MenuCard } from "./cards.js";
+import { DebugLayer } from "./layers.js";
+import { DecodeTopojsonData } from "./misc.js";
 
-var infoPanel = new InfoPanel();
+// Layer
+var main_layer = undefined;
 
-const width = 520, height = 630;
-const svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .on("click", (event) => {
-        infoPanel.hide();
-    });
+// Data
+var provinces = [];
+var regions = [];
 
+// UI
+const body = d3.select("body");
+const map_size = { x: 520, y: 630 };
+const menu_car = new MenuCard(body, map_size.y);
+const map_card = new MapCard(body, map_size, () => main_layer.onMapClick());
+const info_card = new InfoCard(body);
+
+function loadData(data) {
+    // Decode Data
+    const provinces_data = topojson.feature(data, data.objects.provinces).features;
+    const neighbors_data = topojson.neighbors(data.objects.provinces.geometries);
+    [provinces, regions] = DecodeTopojsonData(provinces_data, neighbors_data);
+
+    // Map
+    const indexToId = (id) => ("prov-" + id);
+    const idToIndex = (id) => parseInt(id.slice(5));
+    
+    const mouseEnter    = (event) => main_layer.onProvinceEnter(idToIndex(event.target.id));
+    const mouseLeave    = (event) => main_layer.onProvinceLeave(idToIndex(event.target.id));
+    const click         = (event) => {
+        main_layer.onProvinceClick(idToIndex(event.target.id));
+        event.stopPropagation();
+    };
+
+    map_card.setData(provinces_data, indexToId, mouseEnter, mouseLeave, click);
+}
+
+function postLoadData() {
+    main_layer = new DebugLayer(provinces, regions, info_card);
+}
+
+// Main
 const url = "thirdparties/geojson-italy/provinces.topo.json";
 d3.json(url).then(data => {
-    const albers = d3.geoAlbers()
-        .parallels([36.0, 48.0]) // Bottom/Top Parallels
-        .rotate([-12.75, 0.0]) // Central Meridian
-        .center([0.0, 41.9]) // Central Parallel
-        .translate([width / 2, height / 2]) // Offset
-        .scale(3350); // Scale
-
-    const geojson = topojson.feature(data, data.objects.provinces);
-    svg.selectAll("path")
-        .data(geojson.features)
-        .enter()
-        .append("path")
-        .attr("d", d3.geoPath().projection(albers))
-        .attr("name", (d) => d.properties.prov_name)
-        .on("click", (event) => {
-            const windowX = event.clientX + window.scrollX;
-            const windowY = event.clientY + window.scrollY;
-
-            infoPanel.update(event.target);
-            infoPanel.showAt(windowX, windowY);
-
-            event.stopPropagation();
-        });
+    loadData(data);
+    postLoadData();
 });
