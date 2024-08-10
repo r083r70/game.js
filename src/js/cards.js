@@ -21,6 +21,21 @@ export class Card {
 export class MenuCard extends Card {
     constructor(parent, heigth) {
         super(parent, "menu", "menu", { x: 150, y: heigth});
+        this.buttons = [];
+    }
+
+    addButton(id, text, onClick) {
+        var button = this.body.append("button");
+        button.attr("id", id);
+        button.classed("menu-btn", true);
+        button.text(text);
+        button.on("click", onClick);
+
+        this.buttons.push(button);
+    }
+
+    addSeparator() {
+        this.body.append("hr");
     }
 }
 
@@ -49,7 +64,6 @@ export class MapCard extends Card {
 export class InfoCard extends Card {
     constructor(parent) {
         super(parent, "info", "-", { x: 300, y: 250});
-        this.body.classed("card-info-body", true);
     }
 
     setTitle(title) { this.title.text(title); }
@@ -59,5 +73,32 @@ export class InfoCard extends Card {
     reset() {
         this.title.text("-");
         this.body.text("");
+    }
+}
+
+export class ActionCard extends Card {
+    constructor(parent) {
+        super(parent, "action", "actions", { x: 300, y: 150});
+        this.text = this.body.append("div");
+        this.actions = this.body.append("div");
+        this.buttons = [];
+    }
+
+    setText(text) { this.text.text(text); }
+
+    addAction(id, text, onClick) {
+        var button = this.actions.append("button");
+        button.attr("id", id);
+        button.classed("action-btn", true);
+        button.text(text);
+        button.on("click", onClick);
+
+        this.buttons.push(button);
+    }
+
+    reset() {
+        this.text.text("");
+        this.buttons.forEach(e => e.remove());
+        this.buttons = [];
     }
 }

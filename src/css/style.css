@@ -1,4 +1,11 @@
-div.card{
+hr {
+    border: #aaa;
+    border-style: solid;
+    border-width: 1px 0px 0px 0px;
+    margin: 5px;
+}
+
+div.card {
     border: #000;
     border-style: solid;
     border-width: 2px;
@@ -16,12 +23,22 @@ div.card-title {
     padding: 3px;
 }
 
-div.card-info-body {
+div.card-body {
     padding: 3px;
+}
+
+div#activity-rgn{
+    float: inline-start;
 }
 
 div#floating-panel {
     position: absolute;
+}
+
+button.menu-btn {
+    width: 100%;
+    display: block;
+    margin-bottom: 3px;
 }
 
 svg {
@@ -30,15 +47,22 @@ svg {
 }
 
 path {
-    fill: #ccc;
-    stroke: #000;
+    fill: gainsboro;
+    stroke: black;
     stroke-width: .5px;
 }
 
-path.hovered {
-    fill: red;
-}
+path.hovered        { fill: #ff964f; stroke-width: 2px; }
+path.highlighted    { fill: #fdfd69; }
 
-path.hovered_neighbor {
-    fill: yellow;
-}
+path.selected       { stroke-width: 4px; }
+
+path.province-mnt-0 { fill: beige; }
+path.province-mnt-1 { fill: burlywood; }
+path.province-mnt-2 { fill: saddlebrown; }
+path.province-mnt-3 { fill: brown; }
+
+path.province-coastal { stroke: #07e; stroke-width: 2px; }
+path.province-coastal.selected { stroke: #00a; stroke-width: 4px; }
+
+
