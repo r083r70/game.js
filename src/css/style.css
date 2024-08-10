@@ -27,6 +27,11 @@ div.card-body {
     padding: 3px;
 }
 
+div.actions {
+    width: 65%;
+    margin-inline: auto;
+}
+
 div#activity-rgn{
     float: inline-start;
 }
@@ -35,7 +40,7 @@ div#floating-panel {
     position: absolute;
 }
 
-button.menu-btn {
+button.btn-oneliner {
     width: 100%;
     display: block;
     margin-bottom: 3px;

@@ -1,4 +1,4 @@
-import { indexToId } from "./types.js";
+import { Faction, indexToId } from "./types.js";
 
 export class EmptyLayer {
     activate() { }
@@ -83,9 +83,8 @@ export class SelectorLayer {
 }
 
 export class ProvinceToolLayer extends SelectorLayer {
-    constructor(provinces, info_card, action_card) {
+    constructor(provinces, action_card) {
         super(provinces);
-        this.info_card = info_card;
         this.action_card = action_card;
     }
 
@@ -98,7 +97,6 @@ export class ProvinceToolLayer extends SelectorLayer {
 
     deactivate() {
         super.deactivate();
-        this.info_card.reset();
         this.action_card.reset();
         this.#cleanClasses();
     }
@@ -119,12 +117,15 @@ export class ProvinceToolLayer extends SelectorLayer {
     }
 
     #log() {
-        this.provinces.forEach(p => console.log({
-            "name": p.name,
-            "acronym": p.acronym,
-            "mountain_level": p.mountain_level,
-            "is_coastal": p.is_coastal
-        }));
+        var province_attrs = {};
+        this.provinces.forEach(p => {
+            province_attrs[p.acronym] = {
+                "mountain_level": p.mountain_level,
+                "is_coastal": p.is_coastal
+            };
+        });
+
+        console.log(province_attrs);
     }
 
     #updateClasses() {
@@ -143,9 +144,152 @@ export class ProvinceToolLayer extends SelectorLayer {
             const element = d3.select("#" + indexToId(p.index));
             element.classed("province-mnt-0", false);
             element.classed("province-mnt-1", false);
+            element.classed("province-mnt-2", false);
             element.classed("province-mnt-3", false);
-            element.classed("province-mnt-4", false);
             element.classed("province-coastal", false);
         });
+    }
+}
+
+export class FactionLayer {
+    constructor(provinces, action_card) {
+        this.provinces = provinces;
+        this.action_card = action_card;
+        this.max_factions = 2;
+    }
+
+    activate() {
+        this.#updateInfoText();
+
+        this.action_card.addAction("add-faction", "add-factions", () => {
+            this.max_factions++;
+            this.#updateInfoText();
+        });
+
+        this.action_card.addAction("remove-factions", "remove-factions", () => {
+            this.max_factions = Math.max(this.max_factions - 1, 1);
+            this.#updateInfoText();
+        });
+
+        this.action_card.addAction("create-factions", "create-factions", () => this.#createFactions());
+        this.action_card.addAction("reset-factions", "reset-factions", () => this.#resetFactions());
+    }
+
+    deactivate() {
+        this.action_card.reset();
+        this.#resetFactions();
+    }
+
+    onMapClick() { }
+    onProvinceEnter(index) { }
+    onProvinceLeave(index) { }
+    onProvinceClick(index) { }
+
+    #updateInfoText() {
+        this.action_card.setText(this.max_factions + " faction(s)");
+    }
+
+    #createFactions() {
+        this.#resetFactions();
+
+        const factions_data = [
+            { name: "faction-1", color: "red" },
+            { name: "faction-2", color: "blue" },
+            { name: "faction-3", color: "green" },
+            { name: "faction-4", color: "white" },
+            { name: "faction-5", color: "black" },
+            { name: "faction-6", color: "yellow" },
+            { name: "faction-7", color: "orange" },
+            { name: "faction-8", color: "cyan" },
+            { name: "faction-9", color: "purple" },
+            { name: "faction-0", color: "pink" }
+        ];
+
+        // Compute Factions Size
+        const faction_size = Math.floor(this.provinces.length / this.max_factions);
+        const remainer = this.provinces.length % this.max_factions;
+        var factions_size = [];
+        for (var i = 0; i < this.max_factions; i++) {
+            factions_size.push(faction_size);
+            if (i < remainer) factions_size[i]++;
+        }
+
+        // Available Provinces
+        var available_provinces = [...Array(this.provinces.length).keys()];
+
+        // Coastal Provinces
+        const coastal_provinces = this.provinces.filter(p => p.is_coastal);
+
+        var factions_index = 0;
+        while (factions_index < this.max_factions) {
+
+            // Create Faction
+            const faction_data = factions_data[factions_index % factions_data.length];
+            const faction = new Faction(factions_index, faction_data.name, faction_data.color);
+
+            // Random First
+            {
+                const idx = Math.floor(Math.random() * available_provinces.length);
+                faction.provinces.push(available_provinces[idx]); // Add to Faction
+                available_provinces.splice(idx, 1); // Remove from Available
+            }
+
+            // Fill Faction
+            while (faction.provinces.length < factions_size[factions_index]) {
+
+                // Find Neighbors
+                const neighbors = new Set([]);                
+                faction.provinces.forEach(p => {
+                    
+                    // Add Neighbors
+                    const province = this.provinces[p];
+                    province.neighbors.forEach(n => {
+                        if (available_provinces.indexOf(n) >= 0) neighbors.add({ idx: n, value: 0 });
+                    });
+
+                    // Add Coastal Provinces
+                    if (province.is_coastal) {
+                        coastal_provinces.forEach(c => {
+                            if (available_provinces.indexOf(c.index) >= 0) neighbors.add({ idx: c.index, value: 10 });
+                        });
+                    }
+                });
+
+                if (neighbors.size == 0)
+                    break;
+
+                // Evaluate Neighbors
+                neighbors.forEach(n => {
+                    var value = this.provinces[n.idx].neighbors.reduce((acc, p) => (available_provinces.indexOf(p) >= 0 ? acc + 1 : acc), n.value);
+                    n.value = value;
+                });
+
+                // Sort Neighbors
+                const neighbors_array = Array.from(neighbors);
+                neighbors_array.sort((a, b) => (a.value - b.value));
+
+                const best_candidate = neighbors_array[0];
+                faction.provinces.push(best_candidate.idx); // Add to Faction
+
+                const idx = available_provinces.indexOf(best_candidate.idx);
+                available_provinces.splice(idx, 1); // Remove from Available
+            }
+            
+            faction.provinces.forEach(p => {
+                var element = d3.select("#" + indexToId(p));
+                element.style("fill", faction.color);
+            })
+
+            factions_index++;
+        }
+
+        console.log("DONE");
+    }
+
+    #resetFactions(){
+        this.provinces.forEach(p => {
+            var element = d3.select("#" + indexToId(p.index));
+            element.style("fill", null);
+        })
     }
 }

@@ -26,3 +26,14 @@ export class Region {
 
     toString() { return this.name; }
 }
+
+export class Faction {
+    constructor(index, name, color) {
+        this.index = index;
+        this.name = name.toString();
+        this.color = color;
+        this.provinces = [];
+    }
+
+    toString() { return this.name; }
+}

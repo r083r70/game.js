@@ -27,7 +27,7 @@ export class MenuCard extends Card {
     addButton(id, text, onClick) {
         var button = this.body.append("button");
         button.attr("id", id);
-        button.classed("menu-btn", true);
+        button.classed("btn-oneliner", true);
         button.text(text);
         button.on("click", onClick);
 
@@ -80,7 +80,7 @@ export class ActionCard extends Card {
     constructor(parent) {
         super(parent, "action", "actions", { x: 300, y: 150});
         this.text = this.body.append("div");
-        this.actions = this.body.append("div");
+        this.actions = this.body.append("div").classed("actions", true);
         this.buttons = [];
     }
 
@@ -89,7 +89,7 @@ export class ActionCard extends Card {
     addAction(id, text, onClick) {
         var button = this.actions.append("button");
         button.attr("id", id);
-        button.classed("action-btn", true);
+        button.classed("btn-oneliner", true);
         button.text(text);
         button.on("click", onClick);
 

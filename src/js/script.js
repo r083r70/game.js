@@ -1,5 +1,6 @@
 import { ActionCard, InfoCard, MapCard, MenuCard } from "./cards.js";
-import { DebugLayer, EmptyLayer, ProvinceToolLayer, SelectorLayer } from "./layers.js";
+import { province_attrs } from "./data-only/province-attr.js";
+import { DebugLayer, EmptyLayer, FactionLayer, ProvinceToolLayer, SelectorLayer } from "./layers.js";
 import { DecodeTopojsonData } from "./misc.js";
 import { idToIndex, indexToId } from "./types.js";
 
@@ -35,6 +36,12 @@ function processData(data) {
     const provinces_data = topojson.feature(data, data.objects.provinces).features;
     const neighbors_data = topojson.neighbors(data.objects.provinces.geometries);
     [provinces, regions] = DecodeTopojsonData(provinces_data, neighbors_data);
+    
+    // Set Attributes
+    provinces.forEach(p => {
+        p.mountain_level = province_attrs[p.acronym].mountain_level;
+        p.is_coastal = province_attrs[p.acronym].is_coastal;
+    });
 
     // Inputs
     const mouseEnter = (event) => main_layer.onProvinceEnter(idToIndex(event.target.id));
@@ -44,7 +51,7 @@ function processData(data) {
         event.stopPropagation();
     };
 
-    // Setup
+    // Setup Map
     map_card.setData(provinces_data, indexToId, mouseEnter, mouseLeave, click);
 }
 
@@ -53,22 +60,23 @@ function initLayers() {
     const addLayerButton = (id) => menu_car.addButton(id, id, () => setLayer(id));
     
     layers_map["empty"] = new EmptyLayer();
-    layers_map["hover"] = new DebugLayer(provinces, regions, info_card);
+    layers_map["hover+click"] = new DebugLayer(provinces, regions, info_card);
     layers_map["select"] = new SelectorLayer(provinces);
-    layers_map["province-tool"] = new ProvinceToolLayer(provinces, info_card, action_card);
-
+    layers_map["province-tool"] = new ProvinceToolLayer(provinces, action_card);
+    layers_map["factions"] = new FactionLayer(provinces, action_card);
     
-    addLayerButton("hover");
+    addLayerButton("hover+click");
     addLayerButton("select");
     menu_car.addSeparator();
     addLayerButton("province-tool");
+    addLayerButton("factions");
     
     setLayer("empty");
 }
 
 // Main
-const url = "thirdparties/geojson-italy/provinces.topo.json";
-d3.json(url).then(data => {
+const topojson_url = "thirdparties/geojson-italy/provinces.topo.json";
+d3.json(topojson_url).then(data => {
     processData(data);
     initLayers();
 });
