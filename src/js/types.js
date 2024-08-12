@@ -12,6 +12,7 @@ export class Province {
 
         this.mountain_level = 0; // 0,1,2,3
         this.is_coastal = false;
+        this.is_island = false;
     }
 
     toString() { return `${this.name} [${this.acronym}]`; }

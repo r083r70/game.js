@@ -41,6 +41,7 @@ function processData(data) {
     provinces.forEach(p => {
         p.mountain_level = province_attrs[p.acronym].mountain_level;
         p.is_coastal = province_attrs[p.acronym].is_coastal;
+        p.is_island = province_attrs[p.acronym].is_island;
     });
 
     // Inputs

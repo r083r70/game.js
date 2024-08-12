@@ -57,17 +57,14 @@ path {
     stroke-width: .5px;
 }
 
-path.hovered        { fill: #ff964f; stroke-width: 2px; }
-path.highlighted    { fill: #fdfd69; }
+path.highlighted-1 { fill: #ff964f; }
+path.highlighted-2 { fill: #fdfd69; }
 
-path.selected       { stroke-width: 4px; }
+path.selected { stroke-width: 4px; }
 
-path.province-mnt-0 { fill: beige; }
-path.province-mnt-1 { fill: burlywood; }
-path.province-mnt-2 { fill: saddlebrown; }
-path.province-mnt-3 { fill: brown; }
-
-path.province-coastal { stroke: #07e; stroke-width: 2px; }
-path.province-coastal.selected { stroke: #00a; stroke-width: 4px; }
-
-
+path.prov-mnt-0 { fill: beige; }
+path.prov-mnt-1 { fill: burlywood; }
+path.prov-mnt-2 { fill: saddlebrown; }
+path.prov-mnt-3 { fill: brown; }
+path.prov-coastal { fill: #07e; }
+path.prov-island { fill: #0a6; }
