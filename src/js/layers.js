@@ -8,6 +8,7 @@ export class EmptyLayer {
     onProvinceEnter(index) { }
     onProvinceLeave(index) { }
     onProvinceClick(index) { }
+    onProvinceDoubleClick(index) { }
 }
 
 export class DebugLayer {
@@ -30,6 +31,8 @@ export class DebugLayer {
         this.info_card.setTitle(p.name);
         this.info_card.setText(p.toString() + " | " + this.regions[p.region_index].toString());
     }
+
+    onProvinceDoubleClick(index) { }
 
     #onProvinceHover(index, value) {
         const p = this.provinces[index];
@@ -65,6 +68,8 @@ export class SelectorLayer {
         element.classed("selected", !is_selected);
     }
 
+    onProvinceDoubleClick(index) { }
+
     #cleanSelection() {
         this.provinces.forEach(p => {
             const element = d3.select("#" + indexToId(p.index));
@@ -87,14 +92,15 @@ export class ProvinceToolLayer {
         this.provinces = provinces;
         this.action_card = action_card;
         this.mode = "none";
+        this.target = -1;
     }
 
     activate() {
         const createMode = (name) => this.action_card.addAction(name, name, () => this.#changeMode(name));
         createMode("mountain");
         createMode("coastal");
-        createMode("island");
-        
+        createMode("water-neighbors");
+
         this.action_card.addAction("log", "log", () => this.#log());
         this.#changeMode("none");
     }
@@ -120,15 +126,40 @@ export class ProvinceToolLayer {
             case "coastal":
                 p.is_coastal = !p.is_coastal;
                 break;
-            case "island":
-                p.is_island = !p.is_island;
+            case "water-neighbors":
+                if (this.target >= 0 && this.target != index) {
+
+                    // Help Lambda
+                    const toogleWaterNeighbor = (p, v) => {
+                        const idx = p.water_neighbors.indexOf(v);
+                        if (idx < 0) {
+                            p.water_neighbors.push(v);
+                        } else {
+                            p.water_neighbors.splice(idx, 1);
+                        }
+                    };
+
+                    toogleWaterNeighbor(p, this.target);
+                    toogleWaterNeighbor(this.provinces[this.target], index);
+                }
+                break;
         }
 
         this.#updateProvince(p);
     }
 
+    onProvinceDoubleClick(index) {
+        if (this.mode == "water-neighbors") {
+            this.target = index;
+            this.#cleanAllProvinces();
+            this.#updateAllProvinces();
+        }
+    }
+
     #changeMode(mode) {
         this.mode = mode;
+        this.target = -1;
+
         this.action_card.setText("mode: " + this.mode);
 
         this.#cleanAllProvinces();
@@ -141,7 +172,7 @@ export class ProvinceToolLayer {
             province_attrs[p.acronym] = {
                 "mountain_level": p.mountain_level,
                 "is_coastal": p.is_coastal,
-                "is_island": p.is_island
+                "water_neighbors": p.water_neighbors
             };
         });
 
@@ -160,8 +191,9 @@ export class ProvinceToolLayer {
             case "coastal":
                 element.classed("prov-coastal", p.is_coastal);
                 break;
-            case "island":
-                element.classed("prov-island", p.is_island);
+            case "water-neighbors":
+                element.classed("highlighted-1", p.index == this.target);
+                element.classed("highlighted-2", p.water_neighbors.indexOf(this.target) >= 0);
                 break;
         }
     }
@@ -178,7 +210,8 @@ export class ProvinceToolLayer {
             element.classed("prov-mnt-2", false);
             element.classed("prov-mnt-3", false);
             element.classed("prov-coastal", false);
-            element.classed("prov-island", false);
+            element.classed("highlighted-1", false);
+            element.classed("highlighted-2", false);
         });
     }
 }
@@ -247,10 +280,11 @@ export class FactionLayer {
         }
 
         // Available Provinces
-        var available_provinces = [...Array(this.provinces.length).keys()];
-
-        // Coastal Provinces
-        const coastal_provinces = this.provinces.filter(p => p.is_coastal);
+        var available_provinces = [...this.provinces.keys()];
+        const removeFromAvaliables = (p) => {
+            const idx = available_provinces.indexOf(p);
+            available_provinces.splice(idx, 1);
+        }
 
         var factions_index = 0;
         while (factions_index < this.max_factions) {
@@ -258,53 +292,86 @@ export class FactionLayer {
             // Create Faction
             const faction_data = factions_data[factions_index % factions_data.length];
             const faction = new Faction(factions_index, faction_data.name, faction_data.color);
+            var has_coastal = false;
+
+            // Neighbors
+            const faction_neighbors = [];
+
+            // Helper Lambda
+            const addProvinceToFaction = (province_index) => {
+
+                // Remove from Availables
+                removeFromAvaliables(province_index);
+
+                // Add to Faction
+                faction.provinces.push(province_index);
+
+                // Province
+                const province = this.provinces[province_index];
+                has_coastal |= province.is_coastal;
+
+                // Update Neighbors
+                province.neighbors.forEach(neighbor_index => {
+
+                    // Unavailable > Ignore
+                    if (available_provinces.indexOf(neighbor_index) < 0)
+                        return;
+
+                    // Find in Neighbors
+                    const index = faction_neighbors.findIndex(n => (n.index == neighbor_index));
+
+                    // Existing Neighbor > Update value
+                    if (index >= 0) {
+                        faction_neighbors[index].value--;
+                        return;
+                    }
+
+                    // New Neighbor > Compute value
+                    const value = this.provinces[neighbor_index].neighbors.reduce((acc, p) => (available_provinces.indexOf(p) >= 0 ? acc + 1 : acc), 0);
+                    faction_neighbors.push({ index: neighbor_index, value: value });
+                });
+            }
 
             // Random First
             {
                 const idx = Math.floor(Math.random() * available_provinces.length);
-                faction.provinces.push(available_provinces[idx]); // Add to Faction
-                available_provinces.splice(idx, 1); // Remove from Available
+                addProvinceToFaction(available_provinces[idx]);
             }
 
             // Fill Faction
             while (faction.provinces.length < factions_size[factions_index]) {
+                // Has Neighbors
+                if (faction_neighbors.length > 0) {
+                    // Sort Neighbors
+                    faction_neighbors.sort((a, b) => (a.value - b.value));
 
-                // Find Neighbors
-                const neighbors = new Set([]);
-                faction.provinces.forEach(p => {
+                    // Select best Candidate
+                    const best_candidate = faction_neighbors[0].index;
+                    faction_neighbors.splice(0, 1);
 
-                    // Add Neighbors
-                    const province = this.provinces[p];
-                    province.neighbors.forEach(n => {
-                        if (available_provinces.indexOf(n) >= 0) neighbors.add({ idx: n, value: 0 });
-                    });
+                    // Add to Faction
+                    addProvinceToFaction(best_candidate);
+                }
+                // Try Water Neighbors
+                else {
 
-                    // Add Coastal Provinces
-                    if (province.is_coastal) {
-                        coastal_provinces.forEach(c => {
-                            if (available_provinces.indexOf(c.index) >= 0) neighbors.add({ idx: c.index, value: 10 });
-                        });
+                    // Collect all Water Neighbors
+                    const water_neighbors = [];
+                    faction.provinces.forEach(p => this.provinces[p].water_neighbors.forEach(w => {
+                        if (available_provinces.indexOf(w) >= 0)
+                            water_neighbors.push(w);
+                    }));
+
+                    // Has Water Neighbors > Get Random one
+                    if (water_neighbors.length > 0) {
+                        const idx = Math.floor(Math.random() * water_neighbors.length);
+                        addProvinceToFaction(water_neighbors[idx]);
                     }
-                });
-
-                if (neighbors.size == 0)
-                    break;
-
-                // Evaluate Neighbors
-                neighbors.forEach(n => {
-                    var value = this.provinces[n.idx].neighbors.reduce((acc, p) => (available_provinces.indexOf(p) >= 0 ? acc + 1 : acc), n.value);
-                    n.value = value;
-                });
-
-                // Sort Neighbors
-                const neighbors_array = Array.from(neighbors);
-                neighbors_array.sort((a, b) => (a.value - b.value));
-
-                const best_candidate = neighbors_array[0];
-                faction.provinces.push(best_candidate.idx); // Add to Faction
-
-                const idx = available_provinces.indexOf(best_candidate.idx);
-                available_provinces.splice(idx, 1); // Remove from Available
+                    // No Availabilities > Fail
+                    else {
+                        break;
+                    }
+                }
             }
 
             faction.provinces.forEach(p => {
@@ -314,8 +381,6 @@ export class FactionLayer {
 
             factions_index++;
         }
-
-        console.log("DONE");
     }
 
     #resetFactions() {

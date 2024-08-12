@@ -48,7 +48,7 @@ export class MapCard extends Card {
         this.projection = CreateAlbersProjection(size);
     }
 
-    setData(data, indexToId, onMouseEnter, onMouseLeave, onClick) {
+    setData(data, indexToId, onMouseEnter, onMouseLeave, onClick, onDoubleClick) {
         this.svg.selectAll("path")
             .data(data)
             .enter()
@@ -57,7 +57,8 @@ export class MapCard extends Card {
             .attr("id", (_, index) => indexToId(index))
             .on("mouseenter", (event) => onMouseEnter(event))
             .on("mouseleave", (event) => onMouseLeave(event))
-            .on("click", (event) => onClick(event));
+            .on("click", (event) => onClick(event))
+            .on("dblclick", (event) => onDoubleClick(event));
     }
 }
 
